@@ -29,7 +29,8 @@ VOLUME /data
 WORKDIR /data
 
 COPY docker-entrypoint.sh /entrypoint.sh
+COPY redis.conf /etc/redis.conf
 ENTRYPOINT ["/entrypoint.sh"]
 
 EXPOSE 6379
-CMD [ "redis-server" ]
+CMD [ "redis-server /etc/redis.conf" ]
