@@ -33,4 +33,4 @@ COPY redis.conf /etc/redis.conf
 ENTRYPOINT ["/entrypoint.sh"]
 
 EXPOSE 6379
-CMD [ "redis-server /etc/redis.conf" ]
+CMD [ "redis-server", "/etc/redis.conf" ]
