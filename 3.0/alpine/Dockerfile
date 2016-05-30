@@ -1,19 +1,23 @@
-FROM debian:jessie
+FROM alpine:3.3
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-		ca-certificates \
-		wget \
-	&& rm -rf /var/lib/apt/lists/*
+# add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
+RUN addgroup -S redis && adduser -S -G redis redis
+
+# grab su-exec for easy step-down from root
+RUN apk add --no-cache 'su-exec>=0.2'
 
 ENV REDIS_VERSION 3.0.7
 ENV REDIS_DOWNLOAD_URL http://download.redis.io/releases/redis-3.0.7.tar.gz
 ENV REDIS_DOWNLOAD_SHA1 e56b4b7e033ae8dbf311f9191cf6fdf3ae974d1c
 
 # for redis-sentinel see: http://redis.io/topics/sentinel
-RUN buildDeps='gcc libc6-dev make' \
-	&& set -x \
-	&& apt-get update && apt-get install -y $buildDeps --no-install-recommends \
-	&& rm -rf /var/lib/apt/lists/* \
+RUN set -x \
+	&& apk add --no-cache --virtual .build-deps \
+		gcc \
+		linux-headers \
+		make \
+		musl-dev \
+		tar \
 	&& wget -O redis.tar.gz "$REDIS_DOWNLOAD_URL" \
 	&& echo "$REDIS_DOWNLOAD_SHA1 *redis.tar.gz" | sha1sum -c - \
 	&& mkdir -p /usr/src/redis \
@@ -22,16 +26,15 @@ RUN buildDeps='gcc libc6-dev make' \
 	&& make -C /usr/src/redis \
 	&& make -C /usr/src/redis install \
 	&& rm -r /usr/src/redis \
-	&& apt-get purge -y --auto-remove $buildDeps
+	&& apk del .build-deps
 
-RUN mkdir /data
+RUN mkdir /data && chown redis:redis /data
 VOLUME /data
 WORKDIR /data
 
 COPY docker-entrypoint.sh /usr/local/bin/
-COPY redis.conf /etc/redis.conf
 RUN ln -s usr/local/bin/docker-entrypoint.sh /entrypoint.sh # backwards compat
 ENTRYPOINT ["docker-entrypoint.sh"]
 
 EXPOSE 6379
-CMD [ "redis-server", "/etc/redis.conf" ]
+CMD [ "redis-server" ]
